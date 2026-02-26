@@ -1,40 +1,43 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: Hackathon Learning Materials
+description: Educational content from the CEU MicroData hackathon on AI usage, entity relational modeling, and data refactoring.
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
+  tagline: Three mini-courses and blog posts from a 3-hour hands-on session
   actions:
-    - text: Example Guide
-      link: /guides/example/
+    - text: Start with AI Usage
+      link: /ai-usage/01-landscape/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
+    - text: Jump to ERD
+      link: /erd/01-what-is-erd/
       variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Next steps
+## What You'll Learn
 
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
+  <Card title="How to Use AI" icon="rocket">
+    Model selection, inference platforms, cost optimization, and practical workflows for researchers.
+  </Card>
+  <Card title="Entity Relational Modeling" icon="document">
+    The 50-year-old concept every data scientist should know. Entities, relations, and why structure matters.
+  </Card>
+  <Card title="Data Refactoring Exercise" icon="setting">
+    A real-world example: transforming Hungarian company registry data into a proper relational model.
+  </Card>
+  <Card title="Blog Posts" icon="pencil">
+    Three essays on AI commoditization, the importance of structure, and ERD for researchers.
+  </Card>
 </CardGrid>
+
+## Source Materials
+
+This content is based on a February 2026 hackathon session at CEU MicroData. The materials include:
+
+- A 3-hour recorded transcript of live coding and discussion
+- AI agent interaction logs showing the actual implementation
+- Working code in DuckDB SQL with tests
+
+All code examples are from the actual session, not hypothetical scenarios.

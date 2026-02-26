@@ -6,19 +6,24 @@ import starlight from '@astrojs/starlight';
 export default defineConfig({
 	integrations: [
 		starlight({
-			title: 'My Docs',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' }],
+			title: 'Hackathon Courses',
+			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/korenmiklos/cegjegyzek-hackathon' }],
 			sidebar: [
 				{
-					label: 'Guides',
-					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Example Guide', slug: 'guides/example' },
-					],
+					label: 'How to Use AI',
+					autogenerate: { directory: 'ai-usage' },
 				},
 				{
-					label: 'Reference',
-					autogenerate: { directory: 'reference' },
+					label: 'Entity Relational Modeling',
+					autogenerate: { directory: 'erd' },
+				},
+				{
+					label: 'Data Refactoring Exercise',
+					autogenerate: { directory: 'refactoring' },
+				},
+				{
+					label: 'Blog Posts',
+					autogenerate: { directory: 'blog' },
 				},
 			],
 		}),
