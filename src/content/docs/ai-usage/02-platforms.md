@@ -54,7 +54,7 @@ This means you can often use cutting-edge models for free if you're willing to e
 
 Some platforms offer "anonymous" models:
 
-> "Picol is a name for an unknown model. If you're feeling adventurous, you can try Big Pico, and then maybe next week it's going to turn out it was Facebook's newest open source model."
+> "Big Pickle is a name for an unknown model. If you're feeling adventurous, you can try it, and then maybe next week it's going to turn out it was Facebook's newest open source model."
 
 These are often pre-release models being tested. Fun for experimentation, not for production.
 
