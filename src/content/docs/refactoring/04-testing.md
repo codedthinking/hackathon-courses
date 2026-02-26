@@ -11,6 +11,21 @@ sidebar:
 
 Data pipelines break silently. Without tests, you won't know until your analysis produces nonsense.
 
+```mermaid
+flowchart TD
+    write["Write SQL script"]
+    run["Run: make table.parquet"]
+    test_pk["Test PK uniqueness"]
+    test_fk["Test FK integrity"]
+    commit["Commit if all pass"]
+
+    write --> run --> test_pk
+    test_pk -->|PASS| test_fk
+    test_pk -->|FAIL| write
+    test_fk -->|PASS| commit
+    test_fk -->|FAIL| write
+```
+
 ## Test 1: Primary Key Uniqueness
 
 Every entity table must have unique primary keys:

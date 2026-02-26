@@ -5,76 +5,146 @@ sidebar:
   order: 1
 ---
 
-## The Data Sources
+## The Raw Data
 
-We have Hungarian company registry data in CSV files:
-
-| File | Contents |
-|------|----------|
-| `branch.csv` | Branch office locations |
-| `hq.csv` | Headquarters locations |
-| `site.csv` | Other sites |
-| `manage.csv` | Management relationships |
-| `own.csv` | Ownership relationships |
-
-These come from Opten, a commercial data provider. The data is loaded via `bead`:
+We have Hungarian company registry data from Opten, loaded via `bead`:
 
 ```bash
 bead input load motherlode-opten_20250104
 ```
 
-## The Problem
+This gives us 5 CSV files:
 
-The raw CSVs are not properly normalized:
-- Same person appears in both `manage.csv` and `own.csv`
-- Addresses are mixed: organization addresses (HQ, branch) and person addresses (home)
-- No explicit entity tables - entities are embedded in relations
-- Duplicates everywhere
+```mermaid
+flowchart TD
+    subgraph Input["input/motherlode-opten_20250104/"]
+        branch["branch.csv<br/>Branch offices"]
+        hq["hq.csv<br/>Headquarters"]
+        site["site.csv<br/>Other sites"]
+        manage["manage.csv<br/>Management relations"]
+        own["own.csv<br/>Ownership relations"]
+    end
+```
 
-## What We Need
+## What's In Each File?
 
-A proper relational model:
+**Location files** (branch, hq, site):
+```
+frame_id | address_id | valid_from | valid_till | settlement | WGS84_lon | WGS84_lat | EOV_X | EOV_Y
+```
 
-**Entity Tables** (temp/entities/):
-- `organizations.parquet` - unique firms
-- `people.parquet` - unique people
-- `addresses.parquet` - unique addresses
+**Relation files** (manage, own):
+```
+frame_id | manager_id/owner_id | valid_from | valid_till | sex | birth_year | address_id | ...
+```
 
-**Relation Tables** (temp/scd/):
-- `location.parquet` - org → address
-- `manage.parquet` - org → person (manager)
-- `own.parquet` - org → person (owner)
-- `person_address.parquet` - person → address (home)
+Notice the problem? The same `address_id` column means different things:
+- In location files → organization's address
+- In relation files → person's home address
+
+We didn't realize this until tests failed!
 
 ## The Scale
 
-| Entity | Count |
-|--------|-------|
-| Organizations | 1,284,668 |
-| People | 3,013,739 |
-| Addresses | 940,485+ |
+| Source | Approximate Rows |
+|--------|-----------------|
+| branch.csv | ~500K |
+| hq.csv | ~1.3M |
+| site.csv | ~200K |
+| manage.csv | ~3M |
+| own.csv | ~4M |
 
-This is manageable with DuckDB on a laptop. No need for distributed systems.
+Total: millions of rows, but manageable on a laptop with DuckDB.
+
+## What We Need
+
+Transform this mess into a clean relational model:
+
+```mermaid
+flowchart LR
+    subgraph Before["Raw CSVs (Messy)"]
+        direction TB
+        m1["Entities mixed with relations"]
+        m2["Duplicates everywhere"]
+        m3["Ambiguous columns"]
+    end
+
+    subgraph After["Parquet Tables (Clean)"]
+        direction TB
+        e["Entity Tables<br/>• organizations<br/>• people<br/>• addresses"]
+        r["Relation Tables (SCD2)<br/>• location<br/>• manage<br/>• own<br/>• person_address"]
+    end
+
+    Before --> After
+```
 
 ## The Tools
 
-- **DuckDB**: Fast analytical SQL database
-- **Parquet**: Columnar storage format
-- **Make**: Build orchestration
-- **SQL scripts**: One per output table
+**DuckDB**: Analytical SQL database, perfect for this scale
+```bash
+duckdb -c "SELECT COUNT(*) FROM read_csv_auto('input/.../manage.csv')"
+```
+
+**Parquet**: Columnar storage format, self-describing schema
+```bash
+# No schema definition needed - DuckDB infers it
+COPY table TO 'output.parquet' (FORMAT PARQUET);
+```
+
+**Makefile**: Orchestrates the pipeline
+```makefile
+temp/entities/people.parquet: code/create/people.sql $(PEOPLE_CSV)
+    mkdir -p $(dir $@)
+    $(DUCKDB) < $<
+```
+
+## Our Actual Makefile
+
+Here's the real Makefile from the hackathon:
 
 ```makefile
-# Example Makefile recipe
-temp/entities/people.parquet: code/create/people.sql input/manage.csv input/own.csv
-    mkdir -p $(dir $@)
-    duckdb < $<
+DUCKDB := duckdb
+
+INPUT := input/motherlode-opten_20250104
+TEMP_ENTITIES := temp/entities
+TEMP_SCD := temp/scd
+
+ORG_CSV := $(INPUT)/branch.csv $(INPUT)/hq.csv $(INPUT)/site.csv \
+           $(INPUT)/manage.csv $(INPUT)/own.csv
+PEOPLE_CSV := $(INPUT)/manage.csv $(INPUT)/own.csv
+ADDR_CSV := $(INPUT)/branch.csv $(INPUT)/hq.csv $(INPUT)/site.csv \
+            $(INPUT)/manage.csv $(INPUT)/own.csv
+
+ENTITIES := $(TEMP_ENTITIES)/organizations.parquet \
+            $(TEMP_ENTITIES)/people.parquet \
+            $(TEMP_ENTITIES)/addresses.parquet
+SCD := $(TEMP_SCD)/location.parquet $(TEMP_SCD)/manage.parquet \
+       $(TEMP_SCD)/own.parquet $(TEMP_SCD)/person_address.parquet
+
+all: $(ENTITIES) $(SCD)
+
+test: $(ALL)
+    @echo "=== PK Uniqueness ===" && $(DUCKDB) < code/test/pk_uniqueness.sql
+    @echo "=== FK Integrity ===" && $(DUCKDB) < code/test/fk_integrity.sql
 ```
+
+Notice:
+- Variables at the top for easy configuration
+- Dependencies are explicit (which CSVs each table needs)
+- `make test` runs after `make all`
 
 ## The Approach
 
-1. Explore the raw data
-2. Design the entity tables
-3. Design the relation tables
-4. Write SQL scripts for each table
-5. Test PK uniqueness and FK integrity
-6. Iterate when bugs are found
+```mermaid
+flowchart TD
+    explore["1. Explore raw data<br/>DESCRIBE, sample queries"]
+    design["2. Design entity tables<br/>What are the PKs?"]
+    relations["3. Design relation tables<br/>What connects what?"]
+    write["4. Write SQL scripts<br/>One per table"]
+    test["5. Test immediately<br/>PK unique? FK valid?"]
+    fix["6. Fix bugs<br/>Iterate"]
+
+    explore --> design --> relations --> write --> test
+    test -->|FAIL| fix --> write
+    test -->|PASS| done["Done!"]
+```

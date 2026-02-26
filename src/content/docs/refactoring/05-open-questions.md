@@ -11,6 +11,26 @@ We use `frame_id` from the source system. It's convenient but has issues:
 
 > "Frame IDs are changing version to version."
 
+```mermaid
+flowchart TD
+    subgraph Options["ID Strategy Options"]
+        opt1["Keep frame_id<br/>Convenient but fragile"]
+        opt2["Create UUIDs<br/>Stable but meaningless"]
+        opt3["Concordance table<br/>Best of both worlds"]
+    end
+
+    subgraph Trade["Trade-offs"]
+        easy["Easy to implement"]
+        stable["Long-term stability"]
+        debug["Debuggability"]
+    end
+
+    opt1 --> easy
+    opt2 --> stable
+    opt3 --> stable
+    opt3 --> debug
+```
+
 **Options**:
 1. **Keep frame_id** - Convenient, but breaks when source changes
 2. **Create UUIDs** - Stable, but loses meaning
@@ -84,6 +104,29 @@ We noted this but didn't implement. The source data (`own.csv`) has an `owner_ty
 We have multiple data sources (Opten, ORBIS, etc.):
 
 > "We would map that same ID to an Opten ID if they have one. And to a Parterre ID if they have one."
+
+```mermaid
+flowchart TD
+    subgraph Master["Master Entity"]
+        uuid["entity_uuid<br/>Internal identifier"]
+    end
+
+    subgraph Concordance["Concordance Tables"]
+        c1["concordance_opten<br/>entity_uuid → frame_id"]
+        c2["concordance_orbis<br/>entity_uuid → bvd_id"]
+        c3["concordance_parterre<br/>entity_uuid → parterre_id"]
+    end
+
+    subgraph Sources["Source Systems"]
+        opten["Opten<br/>frame_id"]
+        orbis["ORBIS<br/>bvd_id"]
+        parterre["Parterre<br/>parterre_id"]
+    end
+
+    uuid --> c1 --> opten
+    uuid --> c2 --> orbis
+    uuid --> c3 --> parterre
+```
 
 **The vision**: Master entity table with UUIDs, concordance tables mapping to each source.
 

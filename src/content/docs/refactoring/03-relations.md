@@ -5,6 +5,35 @@ sidebar:
   order: 3
 ---
 
+## The Four Relations
+
+Our data model has four SCD2 relation tables:
+
+```mermaid
+flowchart TD
+    subgraph Entities["Entity Tables"]
+        org["organizations<br/>1,284,668"]
+        ppl["people<br/>3,013,739"]
+        addr["addresses<br/>940,485"]
+    end
+
+    subgraph Relations["Relation Tables (SCD2)"]
+        loc["location<br/>org → address"]
+        manage["manage<br/>org → person"]
+        own["own<br/>org → person"]
+        pa["person_address<br/>person → address"]
+    end
+
+    org --> loc
+    addr --> loc
+    org --> manage
+    ppl --> manage
+    org --> own
+    ppl --> own
+    ppl --> pa
+    addr --> pa
+```
+
 ## Location: Organization → Address
 
 Organizations have locations (HQ, branches, sites) that change over time:
@@ -20,15 +49,15 @@ SELECT
     loc_type
 FROM (
     SELECT frame_id, address_id, valid_from, valid_till, 'hq' AS loc_type
-    FROM read_csv_auto('input/hq.csv')
+    FROM read_csv_auto('input/motherlode-opten_20250104/hq.csv')
     WHERE frame_id IS NOT NULL AND address_id IS NOT NULL
     UNION ALL
     SELECT frame_id, address_id, valid_from, valid_till, 'branch' AS loc_type
-    FROM read_csv_auto('input/branch.csv')
+    FROM read_csv_auto('input/motherlode-opten_20250104/branch.csv')
     WHERE frame_id IS NOT NULL AND address_id IS NOT NULL
     UNION ALL
     SELECT frame_id, address_id, valid_from, valid_till, 'site' AS loc_type
-    FROM read_csv_auto('input/site.csv')
+    FROM read_csv_auto('input/motherlode-opten_20250104/site.csv')
     WHERE frame_id IS NOT NULL AND address_id IS NOT NULL
 );
 
@@ -58,7 +87,7 @@ SELECT
     position,
     self_liquidator,
     liquidator
-FROM read_csv_auto('input/manage.csv')
+FROM read_csv_auto('input/motherlode-opten_20250104/manage.csv')
 WHERE frame_id IS NOT NULL AND manager_id IS NOT NULL;
 
 COPY manage TO 'temp/scd/manage.parquet' (FORMAT PARQUET);
@@ -86,7 +115,7 @@ SELECT
     share,
     share_flag,
     share_source
-FROM read_csv_auto('input/own.csv')
+FROM read_csv_auto('input/motherlode-opten_20250104/own.csv')
 WHERE frame_id IS NOT NULL AND owner_id IS NOT NULL;
 
 COPY own TO 'temp/scd/own.parquet' (FORMAT PARQUET);
@@ -95,6 +124,27 @@ COPY own TO 'temp/scd/own.parquet' (FORMAT PARQUET);
 ## Person Address: The Bug Fix
 
 We initially forgot this relation entirely. The `address_id` in `manage.csv` and `own.csv` is the person's home address, not the organization's location.
+
+```mermaid
+flowchart TD
+    subgraph Wrong["Initial Wrong Design"]
+        csv1["manage.csv<br/>address_id column"]
+        loc1["location table<br/>org → address"]
+        csv1 -->|"Thought it was org address"| loc1
+    end
+
+    subgraph Test["FK Test Failed!"]
+        fail["person_address.address_id<br/>NOT IN addresses → FAIL"]
+    end
+
+    subgraph Right["Correct Design"]
+        csv2["manage.csv<br/>address_id column"]
+        pa["person_address table<br/>person → address"]
+        csv2 -->|"Actually person home address"| pa
+    end
+
+    Wrong --> Test --> Right
+```
 
 **The bug**: FK integrity test failed:
 ```
@@ -112,7 +162,7 @@ SELECT
     valid_from,
     valid_till,
     'manager' AS relation_type
-FROM read_csv_auto('input/manage.csv')
+FROM read_csv_auto('input/motherlode-opten_20250104/manage.csv')
 WHERE manager_id IS NOT NULL AND address_id IS NOT NULL
 UNION ALL
 SELECT
@@ -121,7 +171,7 @@ SELECT
     valid_from,
     valid_till,
     'owner' AS relation_type
-FROM read_csv_auto('input/own.csv')
+FROM read_csv_auto('input/motherlode-opten_20250104/own.csv')
 WHERE owner_id IS NOT NULL AND address_id IS NOT NULL;
 
 COPY person_address TO 'temp/scd/person_address.parquet' (FORMAT PARQUET);

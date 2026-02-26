@@ -7,96 +7,164 @@ sidebar:
 
 ## Mistake 1: The Single Table Too Early
 
-> "If you don't do this, you create a single table too early, then you will keep chasing yourself around in recovery."
+```mermaid
+flowchart LR
+    subgraph Wrong["The Temptation"]
+        single["One Big Table<br/>firm + owner + manager + address"]
+    end
 
-**Symptom**: You have one big table with everything. Analysis is "easy" - just filter and aggregate.
-
-**Problem**: You lose track of what level the data is at.
-
-> "Every single week, half of the meeting was about... this is supposed to be bid level, not tender level."
-
-**Fix**: Keep entity and relation tables separate. Merge only at the last step, for a specific analysis.
-
-## Mistake 2: Statistics Requires One Table
-
-> "In statistics, everything is one table. You cannot do statistics... you're doing statistics on matrices."
-
-**Reality**: Yes, you need one table for regression. But you should create that table from properly normalized sources.
-
-```sql
--- Create analysis table from normalized sources
-CREATE TABLE analysis AS
-SELECT
-    f.frame_id,
-    f.industry,
-    COUNT(DISTINCT o.person_id) as num_owners,
-    SUM(o.share) as total_share
-FROM organizations f
-LEFT JOIN owns o ON f.frame_id = o.frame_id
-WHERE o.valid_till IS NULL  -- current only
-GROUP BY f.frame_id, f.industry;
+    subgraph Right["The Right Way"]
+        ent["Entity Tables"]
+        rel["Relation Tables"]
+        analysis["Analysis Table<br/>(created last)"]
+        ent --> rel --> analysis
+    end
 ```
 
-Now you know exactly what you computed.
+> "If you don't do this, you create a single table too early, then you will keep chasing yourself around in recovery."
 
-## Mistake 3: Mixing Entity and Relation Data
+In our hackathon data:
+- If we merged firms + owners immediately, we'd have 1.3M × multiple owners = explosion
+- Then adding managers = more explosion
+- Then adding historical data = complete mess
 
-We made this mistake in the hackathon:
+**Rule**: Keep entity and relation tables separate. Merge only for a specific analysis.
 
-> "There is an error in the location tables. In own.csv and manage.csv, the address is the home address of the person."
+## Mistake 2: Confusing Entity vs Relation Attributes
 
-We initially put person home addresses in the `location` table (which should only have organization locations).
+We made this mistake! Look at `manage.csv`:
 
-**Fix**: Create separate relation tables:
-- `location` - organization → address
-- `person_address` - person → address
+| Column | Is it... |
+|--------|----------|
+| frame_id | FK to organization |
+| manager_id | FK to person |
+| valid_from | Relation attribute |
+| sex | Person attribute? Or relation attribute? |
+| birth_year | Person attribute? Or relation attribute? |
+| address_id | ??? |
 
-## Mistake 4: Not Testing PK Uniqueness
+We initially thought `address_id` was the organization's address. Wrong! It's the **manager's home address**.
 
-> "The people table has 3,894,436 total rows but only 3,013,739 unique person_ids. That means there are ~880,697 duplicate person_ids."
+```mermaid
+flowchart TD
+    subgraph Wrong["Wrong interpretation"]
+        manage1["manage.csv address_id"]
+        loc1["organization location"]
+        manage1 --> loc1
+    end
 
-This breaks everything:
-- Joins produce unexpected row multiplication
-- Aggregations are wrong
-- FK integrity checks fail silently
+    subgraph Right["Correct interpretation"]
+        manage2["manage.csv address_id"]
+        home["manager's home address"]
+        manage2 --> home
+    end
+```
 
-**Fix**: Test immediately after creating any entity table:
+The FK test caught this:
+```
+person_address.address_id -> addresses: FAIL
+```
+
+## Mistake 3: Not Testing PK Uniqueness Immediately
+
+Our first `people.sql`:
 
 ```sql
-SELECT 'people: person_id unique' AS test,
-    CASE WHEN COUNT(*) = COUNT(DISTINCT person_id)
-         THEN 'PASS' ELSE 'FAIL' END AS result
+-- WRONG: Produces duplicates!
+CREATE TABLE people AS
+SELECT DISTINCT person_id, sex, birth_year FROM (...);
+```
+
+We didn't test until later. When we did:
+
+```
+people: 3,894,436 total, 3,013,739 unique → 880,697 DUPLICATES!
+```
+
+**Rule**: Test PK uniqueness immediately after creating any entity table.
+
+```sql
+-- Add this to your workflow:
+SELECT COUNT(*) = COUNT(DISTINCT person_id) AS pk_unique
 FROM people;
 ```
 
-## Mistake 5: Trusting the Agent
+## Mistake 4: Trusting NULL Handling
 
-> "I always do these questions again and again: did you extract all variables? Did you extract all rows?"
+SQL's NULL handling is tricky:
 
-The AI will confidently produce wrong results. It might:
-- Filter out NULL values silently
-- Use LIMIT without telling you
-- Choose the wrong aggregation function
+```sql
+-- These are considered DIFFERENT by DISTINCT:
+('male', 1986)
+('male', NULL)
+(NULL, 1986)
+```
 
-**Fix**: Always verify counts and samples.
+Our fix used `MODE()`:
 
-## Mistake 6: Schemas in README
+```sql
+SELECT
+    person_id,
+    MODE(sex) AS sex,           -- picks most frequent, prefers non-NULL
+    MODE(birth_year) AS birth_year
+FROM (...)
+GROUP BY person_id;
+```
 
-> "The schema is gonna be in the header of the parquet anyway. So that's another thing - why you shouldn't write these type of English [descriptions]... if they become out of sync, then your agent's gonna get confused."
+## Mistake 5: Schemas in Documentation
 
-Don't duplicate schema information in documentation. It will get stale. Let the data be self-documenting:
-- Parquet files contain schema
-- SQL files show the transformation
-- Column names should be self-explanatory
+We wrote column types in the README:
 
-## Mistake 7: Over-Engineering IDs
+```markdown
+| EOV_X | double |
+| EOV_Y | double |
+```
 
-We debated this extensively:
+Then changed the code to use integers (EOV is in meters, no decimals needed).
 
-> "Would you create a UUID for everyone? What about frame_id which is meaningful?"
+> "The schema is gonna be in the header of the parquet anyway... if they become out of sync, then your agent's gonna get confused."
 
-**Practical advice**:
-- Use source system IDs when they exist
-- Create synthetic IDs only for entities without natural keys
-- Maintain concordance tables for cross-source matching
-- Don't over-engineer - you can always add complexity later
+**Rule**: Don't duplicate schema in documentation. Let the data be self-documenting.
+
+## Mistake 6: Not Using Standard Names
+
+Good names that AI understands:
+
+| Convention | Meaning |
+|------------|---------|
+| `temp/scd/` | Slowly Changing Dimensions |
+| `valid_from`, `valid_till` | SCD2 time bounds |
+| `*_id` suffix | Primary/foreign key |
+| `code/create/` | Scripts that create tables |
+| `code/test/` | Test scripts |
+
+During the hackathon:
+> "As soon as Haiku saw that the folder name was scd, it immediately realized that it's slowly changing dimension."
+
+Use standard conventions. The AI knows them.
+
+## The Test-Driven Data Pipeline
+
+Our final workflow:
+
+```mermaid
+flowchart TD
+    write["Write SQL script"]
+    run["Run: make table.parquet"]
+    test_pk["Test PK uniqueness"]
+    test_fk["Test FK integrity"]
+    commit["Commit if all pass"]
+
+    write --> run --> test_pk
+    test_pk -->|PASS| test_fk
+    test_pk -->|FAIL| write
+    test_fk -->|PASS| commit
+    test_fk -->|FAIL| write
+```
+
+```bash
+# Our actual commands:
+make temp/entities/people.parquet
+make test  # runs pk_uniqueness.sql and fk_integrity.sql
+git add -A && git commit -m "Add people entity table"
+```
