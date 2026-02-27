@@ -94,8 +94,8 @@ COPY table TO 'output.parquet' (FORMAT PARQUET);
 **Makefile**: Orchestrates the pipeline
 ```makefile
 temp/entities/people.parquet: code/create/people.sql $(PEOPLE_CSV)
-    mkdir -p $(dir $@)
-    $(DUCKDB) < $<
+	mkdir -p $(dir $@)
+	$(DUCKDB) < $<
 ```
 
 ## Our Actual Makefile
@@ -123,9 +123,9 @@ SCD := $(TEMP_SCD)/location.parquet $(TEMP_SCD)/manage.parquet \
 
 all: $(ENTITIES) $(SCD)
 
-test: $(ALL)
-    @echo "=== PK Uniqueness ===" && $(DUCKDB) < code/test/pk_uniqueness.sql
-    @echo "=== FK Integrity ===" && $(DUCKDB) < code/test/fk_integrity.sql
+test: all
+	@echo "=== PK Uniqueness ===" && $(DUCKDB) < code/test/pk_uniqueness.sql
+	@echo "=== FK Integrity ===" && $(DUCKDB) < code/test/fk_integrity.sql
 ```
 
 Notice:

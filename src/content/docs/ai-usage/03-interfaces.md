@@ -17,6 +17,17 @@ Traditional AI coding tools bundled everything together:
 
 The new model: use your favorite text editor, your favorite agent manager, and whichever model is cheapest.
 
+## Terminology: "Harness" and Tool Calls
+
+In AI tooling, people sometimes call the UI a "harness": a wrapper around chat that can also trigger tool calls.
+
+In practice, most coding harnesses are just:
+- read files
+- write files
+- run commands
+
+That's enough to feel "agentic" while still being the same underlying thing: chat completions plus tools.
+
 ## The Rise and Fall of Specialized Tools
 
 Tools like Cursor, Windsurf, and Aider had their moment:
@@ -45,6 +56,14 @@ opencode
 2. **Simple interface** - Terminal-based, fast
 3. **Skills system** - Teach it your preferences
 4. **Open source** - No lock-in
+
+### Providers and Open Code Zen
+
+Open Code can connect to multiple providers (Open Router, OpenAI, etc.).
+
+It also has its own inference option (Open Code Zen) which sometimes offers free promos.
+
+Provider policies change. Some providers may restrict third-party clients or make API use expensive. If something does not connect, fall back to Open Router or another provider.
 
 ### The Interface
 
@@ -77,22 +96,38 @@ VS Code with GitHub Copilot is still useful:
 
 The trend is toward terminal-based agents that can do more than just complete code.
 
+## Other Interfaces (Know They Exist)
+
+You will see teams using:
+- **Codex**: a popular UI for chatting with an agent, reviewing files, and revisiting previous sessions.
+- **Google's agentic IDE experiments** ("anti-gravity"): a strong UI idea, but typically tied to a single model ecosystem.
+
+The general pattern is the same: UI quality matters, but model lock-in matters more.
+
+## Permissions and Safety
+
+Some tools ask for permission before every file change/command. Others default to "do it".
+
+Fast defaults are convenient but risky. The habit that makes this safe is always the same: review diffs.
+
 ## The Skills System
 
 Open Code (and similar tools) let you define "skills" - reusable prompts:
 
+````markdown
 ```markdown
 # DuckDB Skill
 
 ## What I do
 DuckDB is a fast, in-memory analytical database.
 
-## CLI Usage
+## CLI usage
 ```bash
 duckdb -c "SELECT 1"
 duckdb < queries.sql
 ```
 ```
+````
 
 Once defined, the agent knows how to use DuckDB without you explaining it every time.
 

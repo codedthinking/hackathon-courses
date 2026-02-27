@@ -51,6 +51,8 @@ Generic instructions that aren't useful for the current task actually hurt perfo
 
 For example: explaining what `bead` is, or how your specific Makefile structure works.
 
+This is also where tiny operational details matter. If the tool is niche, the agent will not guess correctly (for example, how your team indexes data catalogs, or which command updates metadata). Put only the minimum needed for it to stop being confused.
+
 ## The Escape-Enter Workflow
 
 The most common keyboard pattern when working with AI agents:

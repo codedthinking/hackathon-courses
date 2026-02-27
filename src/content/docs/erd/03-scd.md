@@ -13,7 +13,7 @@ If you just update records, you lose history:
 
 ```sql
 -- This destroys history!
-UPDATE manages SET manager_id = 'Bob' WHERE firm_id = 1;
+UPDATE manage SET person_id = 'Bob' WHERE frame_id = '1';
 ```
 
 Who was the manager before Bob? When did they leave? We don't know.

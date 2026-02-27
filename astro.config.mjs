@@ -10,6 +10,7 @@ export default defineConfig({
 		mermaid(),
 		starlight({
 			title: 'Hackathon Courses',
+			customCss: ['./src/styles/brand.css'],
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/korenmiklos/cegjegyzek-hackathon' }],
 			sidebar: [
 				{

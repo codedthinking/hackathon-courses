@@ -38,6 +38,14 @@ curl https://openrouter.ai/api/v1/chat/completions \
 3. **Transparent pricing** - 5% markup, that's all
 4. **Competition** - Route to cheapest provider automatically
 
+### Observability (Optional)
+
+Open Router can integrate with external observability tools (request logging/monitoring) if you need it.
+
+> "You can connect external observability platforms into Open Router."
+
+This is useful when you operate a shared team setup and want auditing, cost monitoring, or debugging across many models.
+
 ### Price Comparison Tool
 
 Use [models.dev](https://models.dev) to compare pricing across models. It's maintained by the Open Router team and shows real-time prices.
@@ -49,6 +57,8 @@ New models often launch with free tiers to gather training data:
 > "New models, as they come out, they need more training data... they give it to inference platforms for one or two weeks for free."
 
 This means you can often use cutting-edge models for free if you're willing to experiment.
+
+Some interfaces also run their own free promotions via their preferred inference backends. For example, Open Code has an inference option called Open Code Zen.
 
 ## Anonymous Models
 
@@ -64,3 +74,11 @@ These are often pre-release models being tested. Fun for experimentation, not fo
 2. **Set a budget** - Easy to track spending
 3. **Default to cheap models** - MiniMax, Kimi for daily work
 4. **Route to expensive models** only for complex tasks
+
+## Terminology
+
+You will hear a few overlapping words:
+
+- **Inference platform/provider**: runs models and serves an API (OpenAI, Anthropic, Open Router providers, etc.)
+- **Router/aggregator**: a layer that gives you one API and routes to many providers (Open Router)
+- **Harness**: industry slang for the UI/tool that wraps chat + tool calls (see the interfaces page)
