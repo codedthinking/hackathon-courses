@@ -5,6 +5,8 @@ import mermaid from 'astro-mermaid';
 
 // https://astro.build/config
 export default defineConfig({
+	site: 'https://codedthinking.github.io',
+	base: '/hackathon-courses',
 	integrations: [
 		// mermaid MUST come before starlight
 		mermaid(),
